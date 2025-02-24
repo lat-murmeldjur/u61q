@@ -1,6 +1,6 @@
 #![allow(warnings)]
+use rand::Rng;
 
-use self::model::{Normal, Position, INDICES, NORMALS, POSITIONS};
 use glam::{
     f32::{Mat3, Vec3},
     Mat4,
@@ -41,6 +41,7 @@ use vulkano::{
         GraphicsPipeline, Pipeline, PipelineBindPoint, PipelineLayout,
         PipelineShaderStageCreateInfo,
     },
+    query::{QueryControlFlags, QueryPool, QueryPoolCreateInfo, QueryType},
     render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass},
     shader::EntryPoint,
     swapchain::{
@@ -58,17 +59,37 @@ use winit::{
     window::{Fullscreen, Window, WindowAttributes, WindowId},
 };
 
-mod model;
-
-mod positions;
-use positions::Position as APosition;
+mod display_mods;
+use display_mods::{oclock, record_nanos, Groupable};
 
 mod f32_3;
+use f32_3::gen_f32_3;
+
+mod f64_3;
+use f64_3::{gen_f64_3, mltply_f64_3, nrmlz_f64_3};
+
+mod positions;
+use positions::{Normal, Position};
+
+mod shapes;
+mod u_modular;
+
+mod magma_ocean;
+use magma_ocean::Stone;
+
+mod anomaly;
+use anomaly::{add_particle_by, e, progress, q, view, Anomaly, LS_F64, TS_F64};
 
 mod moving_around;
 use moving_around::{
     move_elevation, move_forwards, move_sideways, rotate_horizontal, rotate_up, rotate_vertical,
 };
+
+pub struct Bv {
+    pub v: Subbuffer<[Position]>,
+    pub n: Subbuffer<[Normal]>,
+    pub i: Subbuffer<[u32]>,
+}
 
 fn main() -> Result<(), impl Error> {
     // The start of this example is exactly the same as `triangle`. You should read the `triangle`
@@ -83,13 +104,11 @@ fn main() -> Result<(), impl Error> {
 struct App {
     instance: Arc<Instance>,
     device: Arc<Device>,
+    query_pool: Arc<QueryPool>,
     queue: Arc<Queue>,
     memory_allocator: Arc<StandardMemoryAllocator>,
     descriptor_set_allocator: Arc<StandardDescriptorSetAllocator>,
     command_buffer_allocator: Arc<StandardCommandBufferAllocator>,
-    vertex_buffer: Subbuffer<[Position]>,
-    normals_buffer: Subbuffer<[Normal]>,
-    index_buffer: Subbuffer<[u16]>,
     uniform_buffer_allocator: SubbufferAllocator,
     rcx: Option<RenderContext>,
     u61qate: U61qate,
@@ -109,9 +128,10 @@ struct RenderContext {
 }
 
 struct U61qate {
-    view_point: APosition,
-    center: APosition,
-    up_direction: APosition,
+    view_point: Position,
+    u61q: Anomaly,
+    center: Position,
+    up_direction: Position,
     rot_static: bool,
     moving_forward: bool,
     moving_backward: bool,
@@ -200,49 +220,6 @@ impl App {
             Default::default(),
         ));
 
-        let vertex_buffer = Buffer::from_iter(
-            memory_allocator.clone(),
-            BufferCreateInfo {
-                usage: BufferUsage::VERTEX_BUFFER,
-                ..Default::default()
-            },
-            AllocationCreateInfo {
-                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
-                    | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
-                ..Default::default()
-            },
-            POSITIONS,
-        )
-        .unwrap();
-        let normals_buffer = Buffer::from_iter(
-            memory_allocator.clone(),
-            BufferCreateInfo {
-                usage: BufferUsage::VERTEX_BUFFER,
-                ..Default::default()
-            },
-            AllocationCreateInfo {
-                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
-                    | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
-                ..Default::default()
-            },
-            NORMALS,
-        )
-        .unwrap();
-        let index_buffer = Buffer::from_iter(
-            memory_allocator.clone(),
-            BufferCreateInfo {
-                usage: BufferUsage::INDEX_BUFFER,
-                ..Default::default()
-            },
-            AllocationCreateInfo {
-                memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
-                    | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
-                ..Default::default()
-            },
-            INDICES,
-        )
-        .unwrap();
-
         let uniform_buffer_allocator = SubbufferAllocator::new(
             memory_allocator.clone(),
             SubbufferAllocatorCreateInfo {
@@ -253,28 +230,69 @@ impl App {
             },
         );
 
+        let mut rng = rand::thread_rng();
+
+        let mut anomaly = Anomaly {
+            anomaly: vec![],
+            component: vec![],
+            force: vec![],
+        };
+
+        let k = 10;
+
+        for _ in 0..k {
+            add_particle_by(
+                &mut anomaly,
+                e(
+                    gen_f32_3(0.0, 69.0, &mut rng),
+                    mltply_f64_3(nrmlz_f64_3(gen_f64_3(0.0, 10.0, &mut rng)), LS_F64),
+                    true,
+                ),
+            );
+            add_particle_by(
+                &mut anomaly,
+                q(
+                    gen_f32_3(0.0, 69.0, &mut rng),
+                    mltply_f64_3(nrmlz_f64_3(gen_f64_3(0.0, 10.0, &mut rng)), LS_F64),
+                    true,
+                    true,
+                    rng.gen_range(0..3),
+                    rng.gen_range(0..1),
+                ),
+            );
+        }
+
+        // Create a query pool for occlusion queries, with 3 slots.
+        let query_pool = QueryPool::new(
+            device.clone(),
+            QueryPoolCreateInfo {
+                query_count: 60,
+                ..QueryPoolCreateInfo::query_type(QueryType::Occlusion)
+            },
+        )
+        .unwrap();
+
         App {
             instance,
             device,
+            query_pool,
             queue,
             memory_allocator,
             descriptor_set_allocator,
             command_buffer_allocator,
-            vertex_buffer,
-            normals_buffer,
-            index_buffer,
             uniform_buffer_allocator,
             rcx: None,
             u61qate: U61qate {
-                view_point: APosition {
+                u61q: anomaly,
+                view_point: Position {
                     position: [0.0, -1.0, 1.0],
                 },
 
-                center: APosition {
+                center: Position {
                     position: [0.0, 0.0, 0.0],
                 },
 
-                up_direction: APosition {
+                up_direction: Position {
                     position: [0.0, -1.0, 0.0],
                 },
 
@@ -513,6 +531,21 @@ impl ApplicationHandler for App {
                     );
                 }
 
+                progress(&mut self.u61qate.u61q, TS_F64);
+                let get = view(&mut self.u61qate.u61q);
+
+                let mut bvs: Vec<Bv> = vec![];
+
+                for mut g in get {
+                    let (vertex_buffer, normals_buffer, index_buffer) =
+                        load_buffers_short(&mut g, self.memory_allocator.clone());
+                    bvs.push(Bv {
+                        v: vertex_buffer,
+                        n: normals_buffer,
+                        i: index_buffer,
+                    });
+                }
+
                 let window_size = rcx.window.surface_size();
 
                 if window_size.width == 0 || window_size.height == 0 {
@@ -625,38 +658,52 @@ impl ApplicationHandler for App {
                 )
                 .unwrap();
 
-                builder
-                    .begin_render_pass(
-                        RenderPassBeginInfo {
-                            clear_values: vec![
-                                Some([0.0, 0.0, 1.0, 1.0].into()),
-                                Some(1f32.into()),
-                            ],
-                            ..RenderPassBeginInfo::framebuffer(
-                                rcx.framebuffers[image_index as usize].clone(),
+                unsafe {
+                    builder
+                        .reset_query_pool(self.query_pool.clone(), 0..3)
+                        .unwrap()
+                        .begin_render_pass(
+                            RenderPassBeginInfo {
+                                clear_values: vec![
+                                    Some([0.0, 0.0, 1.0, 1.0].into()),
+                                    Some(1f32.into()),
+                                ],
+                                ..RenderPassBeginInfo::framebuffer(
+                                    rcx.framebuffers[image_index as usize].clone(),
+                                )
+                            },
+                            Default::default(),
+                        )
+                        .unwrap()
+                        .bind_pipeline_graphics(rcx.pipeline.clone())
+                        .unwrap()
+                        .bind_descriptor_sets(
+                            PipelineBindPoint::Graphics,
+                            rcx.pipeline.layout().clone(),
+                            0,
+                            descriptor_set,
+                        )
+                        .unwrap();
+
+                    for x in bvs {
+                        builder
+                            .begin_query(
+                                self.query_pool.clone(),
+                                0,
+                                QueryControlFlags::empty(),
+                                // QueryControlFlags::PRECISE,
                             )
-                        },
-                        Default::default(),
-                    )
-                    .unwrap()
-                    .bind_pipeline_graphics(rcx.pipeline.clone())
-                    .unwrap()
-                    .bind_descriptor_sets(
-                        PipelineBindPoint::Graphics,
-                        rcx.pipeline.layout().clone(),
-                        0,
-                        descriptor_set,
-                    )
-                    .unwrap()
-                    .bind_vertex_buffers(
-                        0,
-                        (self.vertex_buffer.clone(), self.normals_buffer.clone()),
-                    )
-                    .unwrap()
-                    .bind_index_buffer(self.index_buffer.clone())
-                    .unwrap();
-                unsafe { builder.draw_indexed(self.index_buffer.len() as u32, 1, 0, 0, 0) }
-                    .unwrap();
+                            .unwrap()
+                            .bind_vertex_buffers(0, (x.v.clone(), x.n.clone()))
+                            .unwrap()
+                            .bind_index_buffer(x.i.clone())
+                            .unwrap()
+                            .draw_indexed(x.i.len() as u32 as u32, 1, 0, 0, 0)
+                            .unwrap()
+                            .end_query(self.query_pool.clone(), 0)
+                            .unwrap();
+                    }
+                }
 
                 builder.end_render_pass(Default::default()).unwrap();
 
@@ -915,6 +962,57 @@ fn window_size_dependent_setup(
     };
 
     (framebuffers, pipeline)
+}
+
+fn load_buffers_short(
+    stone: &mut Stone,
+    memory_allocator: Arc<StandardMemoryAllocator>,
+    //) -> (u32, u32, u32) {
+) -> (Subbuffer<[Position]>, Subbuffer<[Normal]>, Subbuffer<[u32]>) {
+    let vertex_buffer = Buffer::from_iter(
+        memory_allocator.clone(),
+        BufferCreateInfo {
+            usage: BufferUsage::VERTEX_BUFFER,
+            ..Default::default()
+        },
+        AllocationCreateInfo {
+            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+            ..Default::default()
+        },
+        stone.positions.clone(),
+    )
+    .unwrap();
+    let normals_buffer = Buffer::from_iter(
+        memory_allocator.clone(),
+        BufferCreateInfo {
+            usage: BufferUsage::VERTEX_BUFFER,
+            ..Default::default()
+        },
+        AllocationCreateInfo {
+            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+            ..Default::default()
+        },
+        stone.normals.clone(),
+    )
+    .unwrap();
+    let index_buffer = Buffer::from_iter(
+        memory_allocator.clone(),
+        BufferCreateInfo {
+            usage: BufferUsage::INDEX_BUFFER,
+            ..Default::default()
+        },
+        AllocationCreateInfo {
+            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+            ..Default::default()
+        },
+        stone.indices.clone(),
+    )
+    .unwrap();
+
+    return (vertex_buffer, normals_buffer, index_buffer);
 }
 
 mod vs {
