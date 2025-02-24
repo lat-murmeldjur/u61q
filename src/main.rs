@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 use self::model::{Normal, Position, INDICES, NORMALS, POSITIONS};
 use glam::{
     f32::{Mat3, Vec3},
@@ -58,8 +60,15 @@ use winit::{
 
 mod model;
 
-mod position;
-use position::APosition;
+mod positions;
+use positions::Position as APosition;
+
+mod f32_3;
+
+mod moving_around;
+use moving_around::{
+    move_elevation, move_forwards, move_sideways, rotate_horizontal, rotate_up, rotate_vertical,
+};
 
 fn main() -> Result<(), impl Error> {
     // The start of this example is exactly the same as `triangle`. You should read the `triangle`
@@ -407,6 +416,103 @@ impl ApplicationHandler for App {
                 rcx.recreate_swapchain = true;
             }
             WindowEvent::RedrawRequested => {
+                if self.u61qate.moving_forward {
+                    move_forwards(
+                        &mut self.u61qate.view_point,
+                        &mut self.u61qate.center,
+                        &mut self.u61qate.up_direction,
+                        0.01,
+                    );
+                }
+                if self.u61qate.moving_backward {
+                    move_forwards(
+                        &mut self.u61qate.view_point,
+                        &mut self.u61qate.center,
+                        &mut self.u61qate.up_direction,
+                        -0.01,
+                    );
+                }
+                if self.u61qate.moving_left {
+                    move_sideways(
+                        &mut self.u61qate.view_point,
+                        &mut self.u61qate.center,
+                        &mut self.u61qate.up_direction,
+                        -0.01,
+                    );
+                }
+                if self.u61qate.moving_right {
+                    move_sideways(
+                        &mut self.u61qate.view_point,
+                        &mut self.u61qate.center,
+                        &mut self.u61qate.up_direction,
+                        0.01,
+                    );
+                }
+                if self.u61qate.moving_up {
+                    move_elevation(
+                        &mut self.u61qate.view_point,
+                        &mut self.u61qate.center,
+                        &mut self.u61qate.up_direction,
+                        0.01,
+                    );
+                }
+                if self.u61qate.moving_down {
+                    move_elevation(
+                        &mut self.u61qate.view_point,
+                        &mut self.u61qate.center,
+                        &mut self.u61qate.up_direction,
+                        -0.01,
+                    );
+                }
+                if self.u61qate.rotating_left {
+                    rotate_up(
+                        &mut self.u61qate.view_point,
+                        &mut self.u61qate.center,
+                        &mut self.u61qate.up_direction,
+                        -0.01,
+                    );
+                }
+                if self.u61qate.rotating_right {
+                    rotate_up(
+                        &mut self.u61qate.view_point,
+                        &mut self.u61qate.center,
+                        &mut self.u61qate.up_direction,
+                        0.01,
+                    );
+                }
+                if self.u61qate.turning_left {
+                    rotate_horizontal(
+                        &mut self.u61qate.view_point,
+                        &mut self.u61qate.center,
+                        &mut self.u61qate.up_direction,
+                        -0.01,
+                    );
+                }
+                if self.u61qate.turning_right {
+                    rotate_horizontal(
+                        &mut self.u61qate.view_point,
+                        &mut self.u61qate.center,
+                        &mut self.u61qate.up_direction,
+                        0.01,
+                    );
+                }
+                if self.u61qate.turning_up {
+                    rotate_vertical(
+                        &mut self.u61qate.view_point,
+                        &mut self.u61qate.center,
+                        &mut self.u61qate.up_direction,
+                        0.01,
+                    );
+                }
+                if self.u61qate.turning_down {
+                    rotate_vertical(
+                        &mut self.u61qate.view_point,
+                        &mut self.u61qate.center,
+                        &mut self.u61qate.up_direction,
+                        -0.01,
+                    );
+                }
+
                 let window_size = rcx.window.surface_size();
 
                 if window_size.width == 0 || window_size.height == 0 {
@@ -454,10 +560,23 @@ impl ApplicationHandler for App {
                         100.0,
                     );
                     let view = Mat4::look_at_rh(
-                        Vec3::new(0.3, 0.3, 1.0),
-                        Vec3::new(0.0, 0.0, 0.0),
-                        Vec3::new(0.0, -1.0, 0.0),
+                        Vec3::new(
+                            self.u61qate.view_point.position[0],
+                            self.u61qate.view_point.position[1],
+                            self.u61qate.view_point.position[2],
+                        ),
+                        Vec3::new(
+                            self.u61qate.center.position[0],
+                            self.u61qate.center.position[1],
+                            self.u61qate.center.position[2],
+                        ),
+                        Vec3::new(
+                            self.u61qate.up_direction.position[0],
+                            self.u61qate.up_direction.position[1],
+                            self.u61qate.up_direction.position[2],
+                        ),
                     );
+
                     let scale = Mat4::from_scale(Vec3::splat(0.01));
 
                     let uniform_data = vs::Data {
@@ -580,19 +699,19 @@ impl ApplicationHandler for App {
         event: DeviceEvent,
     ) {
         match event {
-            DeviceEvent::PointerMotion {  .. } => {
-                // rotate_horizontal(
-                //     &mut self.u61qate.view_point,
-                //     &mut self.u61qate.center,
-                //     &mut self.u61qate.up_direction,
-                //     delta.0 as f32 / 400.0,
-                // );
-                // rotate_vertical(
-                //     &mut self.u61qate.view_point,
-                //     &mut self.u61qate.center,
-                //     &mut self.u61qate.up_direction,
-                //     delta.1 as f32 / 400.0,
-                // );
+            DeviceEvent::PointerMotion { delta, .. } => {
+                rotate_horizontal(
+                    &mut self.u61qate.view_point,
+                    &mut self.u61qate.center,
+                    &mut self.u61qate.up_direction,
+                    delta.0 as f32 / 400.0,
+                );
+                rotate_vertical(
+                    &mut self.u61qate.view_point,
+                    &mut self.u61qate.center,
+                    &mut self.u61qate.up_direction,
+                    delta.1 as f32 / 400.0,
+                );
             }
             DeviceEvent::Key(RawKeyEvent {
                 physical_key,

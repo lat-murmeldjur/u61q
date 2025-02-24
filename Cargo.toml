@@ -10,6 +10,7 @@ vulkano = { git = "https://github.com/vulkano-rs/vulkano.git", default-features 
 vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano.git" } 
 winit = { git = "https://github.com/rust-windowing/winit.git", default-features = true  }
 glam = { git = "https://github.com/bitshifter/glam-rs" }
+rand = { git = "https://github.com/rust-random/rand.git" }
 
 #rand = { git = "https://github.com/rust-random/rand.git" }
 #cgmath = { git = "https://github.com/rustgd/cgmath.git" }
