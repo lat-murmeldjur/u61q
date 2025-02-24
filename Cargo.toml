@@ -1,0 +1,17 @@
+[package]
+name = "u61q"
+version = "0.1.0"
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+vulkano = { git = "https://github.com/vulkano-rs/vulkano.git", default-features = true  }
+vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano.git" } 
+winit = { git = "https://github.com/rust-windowing/winit.git", default-features = true  }
+glam = { git = "https://github.com/bitshifter/glam-rs" }
+
+#rand = { git = "https://github.com/rust-random/rand.git" }
+#cgmath = { git = "https://github.com/rustgd/cgmath.git" }
+#serde = { git = "https://github.com/serde-rs/serde.git" , features = ["derive"] }
+#vulkano-util = { git = "https://github.com/vulkano-rs/vulkano.git" }
