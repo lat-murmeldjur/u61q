@@ -50,12 +50,16 @@ use vulkano::{
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
-    event::WindowEvent,
+    event::{DeviceEvent, DeviceId, ElementState, RawKeyEvent, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
-    window::{Window, WindowAttributes, WindowId},
+    keyboard::{KeyCode, PhysicalKey},
+    window::{Fullscreen, Window, WindowAttributes, WindowId},
 };
 
 mod model;
+
+mod position;
+use position::APosition;
 
 fn main() -> Result<(), impl Error> {
     // The start of this example is exactly the same as `triangle`. You should read the `triangle`
@@ -79,6 +83,7 @@ struct App {
     index_buffer: Subbuffer<[u16]>,
     uniform_buffer_allocator: SubbufferAllocator,
     rcx: Option<RenderContext>,
+    u61qate: U61qate,
 }
 
 struct RenderContext {
@@ -92,6 +97,25 @@ struct RenderContext {
     recreate_swapchain: bool,
     previous_frame_end: Option<Box<dyn GpuFuture>>,
     rotation_start: Instant,
+}
+
+struct U61qate {
+    view_point: APosition,
+    center: APosition,
+    up_direction: APosition,
+    rot_static: bool,
+    moving_forward: bool,
+    moving_backward: bool,
+    moving_left: bool,
+    moving_right: bool,
+    moving_up: bool,
+    moving_down: bool,
+    rotating_left: bool,
+    rotating_right: bool,
+    turning_left: bool,
+    turning_right: bool,
+    turning_up: bool,
+    turning_down: bool,
 }
 
 impl App {
@@ -232,6 +256,33 @@ impl App {
             index_buffer,
             uniform_buffer_allocator,
             rcx: None,
+            u61qate: U61qate {
+                view_point: APosition {
+                    position: [0.0, -1.0, 1.0],
+                },
+
+                center: APosition {
+                    position: [0.0, 0.0, 0.0],
+                },
+
+                up_direction: APosition {
+                    position: [0.0, -1.0, 0.0],
+                },
+
+                rot_static: true,
+                moving_forward: false,
+                moving_backward: false,
+                moving_left: false,
+                moving_right: false,
+                moving_up: false,
+                moving_down: false,
+                rotating_left: false,
+                rotating_right: false,
+                turning_left: false,
+                turning_right: false,
+                turning_up: false,
+                turning_down: false,
+            },
         }
     }
 }
@@ -240,7 +291,11 @@ impl ApplicationHandler for App {
     fn can_create_surfaces(&mut self, event_loop: &dyn ActiveEventLoop) {
         let window = Arc::new(
             event_loop
-                .create_window(WindowAttributes::default())
+                .create_window(
+                    WindowAttributes::default()
+                        .with_title("u61q")
+                        .with_fullscreen(Some(Fullscreen::Borderless(None))),
+                )
                 .unwrap(),
         );
         let surface = Surface::from_window(self.instance.clone(), window.clone()).unwrap();
@@ -515,6 +570,124 @@ impl ApplicationHandler for App {
                 }
             }
             _ => {}
+        }
+    }
+
+    fn device_event(
+        &mut self,
+        _event_loop: &dyn ActiveEventLoop,
+        device_id: Option<DeviceId>,
+        event: DeviceEvent,
+    ) {
+        match event {
+            DeviceEvent::PointerMotion {  .. } => {
+                // rotate_horizontal(
+                //     &mut self.u61qate.view_point,
+                //     &mut self.u61qate.center,
+                //     &mut self.u61qate.up_direction,
+                //     delta.0 as f32 / 400.0,
+                // );
+                // rotate_vertical(
+                //     &mut self.u61qate.view_point,
+                //     &mut self.u61qate.center,
+                //     &mut self.u61qate.up_direction,
+                //     delta.1 as f32 / 400.0,
+                // );
+            }
+            DeviceEvent::Key(RawKeyEvent {
+                physical_key,
+                state: ElementState::Pressed,
+                ..
+            }) => match physical_key {
+                PhysicalKey::Code(KeyCode::KeyW) => {
+                    self.u61qate.moving_forward = true;
+                }
+                PhysicalKey::Code(KeyCode::KeyS) => {
+                    self.u61qate.moving_backward = true;
+                }
+                PhysicalKey::Code(KeyCode::KeyA) => {
+                    self.u61qate.moving_left = true;
+                }
+                PhysicalKey::Code(KeyCode::KeyD) => {
+                    self.u61qate.moving_right = true;
+                }
+                PhysicalKey::Code(KeyCode::KeyR) => {
+                    self.u61qate.moving_up = true;
+                }
+                PhysicalKey::Code(KeyCode::KeyF) => {
+                    self.u61qate.moving_down = true;
+                }
+                PhysicalKey::Code(KeyCode::KeyQ) => {
+                    self.u61qate.rotating_left = true;
+                }
+                PhysicalKey::Code(KeyCode::KeyE) => {
+                    self.u61qate.rotating_right = true;
+                }
+                PhysicalKey::Code(KeyCode::KeyX) => {
+                    self.u61qate.turning_left = true;
+                }
+                PhysicalKey::Code(KeyCode::KeyC) => {
+                    self.u61qate.turning_right = true;
+                }
+                PhysicalKey::Code(KeyCode::KeyT) => {
+                    self.u61qate.turning_up = true;
+                }
+                PhysicalKey::Code(KeyCode::KeyG) => {
+                    self.u61qate.turning_down = true;
+                }
+                PhysicalKey::Code(KeyCode::KeyP) => {
+                    if self.u61qate.rot_static {
+                        self.u61qate.rot_static = false;
+                    } else {
+                        self.u61qate.rot_static = true;
+                    }
+                }
+                _ => (),
+            },
+            DeviceEvent::Key(RawKeyEvent {
+                physical_key,
+                state: ElementState::Released,
+                ..
+            }) => match physical_key {
+                PhysicalKey::Code(KeyCode::KeyW) => {
+                    self.u61qate.moving_forward = false;
+                }
+                PhysicalKey::Code(KeyCode::KeyS) => {
+                    self.u61qate.moving_backward = false;
+                }
+                PhysicalKey::Code(KeyCode::KeyA) => {
+                    self.u61qate.moving_left = false;
+                }
+                PhysicalKey::Code(KeyCode::KeyD) => {
+                    self.u61qate.moving_right = false;
+                }
+                PhysicalKey::Code(KeyCode::KeyR) => {
+                    self.u61qate.moving_up = false;
+                }
+                PhysicalKey::Code(KeyCode::KeyF) => {
+                    self.u61qate.moving_down = false;
+                }
+                PhysicalKey::Code(KeyCode::KeyQ) => {
+                    self.u61qate.rotating_left = false;
+                }
+                PhysicalKey::Code(KeyCode::KeyE) => {
+                    self.u61qate.rotating_right = false;
+                }
+                PhysicalKey::Code(KeyCode::KeyX) => {
+                    self.u61qate.turning_left = false;
+                }
+                PhysicalKey::Code(KeyCode::KeyC) => {
+                    self.u61qate.turning_right = false;
+                }
+                PhysicalKey::Code(KeyCode::KeyT) => {
+                    self.u61qate.turning_up = false;
+                }
+                PhysicalKey::Code(KeyCode::KeyG) => {
+                    self.u61qate.turning_down = false;
+                }
+                _ => (),
+            },
+            _ => (),
         }
     }
 
