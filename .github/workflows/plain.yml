@@ -28,5 +28,5 @@ jobs:
           submodules: 'true'
       # Runs a single command using the runners shell
       - name: Build
-        run: cargo build --verbose
+        run: rustup update && cargo build --verbose
 
