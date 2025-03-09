@@ -50,13 +50,15 @@ use vulkano::{
     sync::{self, GpuFuture},
     Validated, VulkanError, VulkanLibrary,
 };
+
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
     event::{DeviceEvent, DeviceId, ElementState, RawKeyEvent, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
-    window::{Fullscreen, Window, WindowAttributes, WindowId},
+    monitor::Fullscreen,
+    window::{Window, WindowAttributes, WindowId},
 };
 
 mod display_mods;
