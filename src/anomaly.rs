@@ -185,9 +185,9 @@ pub fn component_2_interact(df: &Force, a: &mut Component, b: &mut Component) {
 }
 
 pub fn force_apply(_f: &Force, a: &mut Component, b: &mut Component) {
-    set_inertia([0.0, 0.0, 0.0], a);
+    // set_inertia([0.0, 0.0, 0.0], a);
 
-    set_inertia([0.0, 0.0, 0.0], b);
+    // set_inertia([0.0, 0.0, 0.0], b);
 }
 
 pub fn progress(anom: &mut Anomaly, time: f64) {
