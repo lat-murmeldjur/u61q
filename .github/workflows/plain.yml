@@ -28,5 +28,5 @@ jobs:
           submodules: 'true'
       # Runs a single command using the runners shell
       - name: Build
-        run: rustup update && cargo build --verbose
+        run: rustup update && cargo build --config net.git-fetch-with-cli=true --verbose
 
